@@ -1,0 +1,74 @@
+<?php  // Moodle configuration file
+
+unset($CFG);
+global $CFG;
+$CFG = new stdClass();
+
+$CFG->dbtype    = 'mysqli';
+$CFG->dblibrary = 'native';
+$CFG->dbhost    = '{{groups['db_server'][0]}}';
+$CFG->dbname    = 'moodle';
+$CFG->dbuser    = 'moodle';
+$CFG->dbpass    = '{{ MYSQL_PASSWORD }}';
+$CFG->prefix    = 'mdl_';
+$CFG->dboptions = array (
+  'dbpersist' => 0,
+  'dbport' => '',
+  'dbsocket' => '',
+  'dbcollation' => 'utf8mb4_unicode_ci',
+);
+
+$CFG->wwwroot   = '{{ MOODLE_WWWROOT }}';
+$CFG->dataroot  = '/var/www/moodledata';
+//tempdir, cachedir is inside dataroot, can be delete all the time
+$CFG->localcachedir = '/var/www/moodlelocalcache';
+$CFG->admin     = 'admin';
+
+//Add Here
+$CFG->session_handler_class = '\core\session\redis';
+$CFG->session_redis_host = '{{ MOODLE_SESSION_SERVER_IP }}';
+$CFG->session_redis_port = 6379;  // Optional.
+$CFG->session_redis_database = 0;  // Optional, default is db 0.
+$CFG->session_redis_prefix = ''; // Optional, default is don't set one.
+$CFG->session_redis_acquire_lock_timeout = 120;
+$CFG->session_redis_lock_expire = 7200;
+
+// define('MDL_PERF', true);
+// define('MDL_PERFDB', true);
+// define('MDL_PERFTOLOG', true);
+// define('MDL_PERFTOFOOT', true);
+
+// @error_reporting(E_ALL | E_STRICT);   // NOT FOR PRODUCTION SERVERS!
+// @ini_set('display_errors', '1');         // NOT FOR PRODUCTION SERVERS!
+// $CFG->debug = (E_ALL | E_STRICT);   // === DEBUG_DEVELOPER - NOT FOR PRODUCTION SERVERS!
+// $CFG->debugdisplay = 1;              // NOT FOR PRODUCTION SERVERS!
+
+$CFG->upgradekey = '{{ MOODLE_UPGRADE_KEY }}';
+
+//sogg
+$CFG->preventexecpath = true;
+$CFG->aspellpath = '/usr/bin/aspell';
+$CFG->pathtogs = '/usr/bin/gs';
+$CFG->pathtounoconv = '/usr/bin/unoconv';
+$CFG->pathtophp = '/usr/bin/php';
+$CFG->pathtodu = '/usr/bin/du';
+
+{% if HAS_SSL_CERTIFICATE %}
+$CFG->reverseproxy = false;
+$CFG->sslproxy = true;
+{% else %}
+  {% if NON_SSL_HAS_REVERSEPROXY %}
+$CFG->reverseproxy = false;
+  {% else %}
+$CFG->reverseproxy = false;
+  {% endif %}
+$CFG->sslproxy = false;
+{% endif %}
+//Add Here End
+
+$CFG->directorypermissions = 0777;
+
+require_once(__DIR__ . '/lib/setup.php');
+
+// There is no php closing tag in this file,
+// it is intentional because it prevents trailing whitespace problems!

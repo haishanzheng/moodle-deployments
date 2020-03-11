@@ -1,0 +1,23 @@
+- name: restart ufw
+  service:
+    name: ufw
+    state: restarted
+  become: true
+
+- name: restart zabbix-agent
+  service:
+    name: zabbix-agent
+    state: restarted
+  become: true
+
+- name: restart filebeat
+  service:
+    name: filebeat
+    state: restarted
+  become: true
+
+- name: restart metricbeat
+  service:
+    name: metricbeat
+    state: restarted
+  become: true

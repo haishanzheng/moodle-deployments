@@ -1,0 +1,22 @@
+# zabbix agent begin
+- name: install zabbix-agent
+  package:
+    pkg: zabbix-agent
+    state: latest
+  become: true
+
+- name: set zabbix-agentd conf server name
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: 'Server='
+    line: 'Server={{ ZABBIX_RND_PROXY_IP }}'
+  become: true
+  notify: restart zabbix-agent
+
+- name: start zabbix-agent
+  service:
+    name: zabbix-agent
+    state: started
+    enabled: yes
+  become: true
+# zabbix agent end

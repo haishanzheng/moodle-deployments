@@ -1,0 +1,116 @@
+# systemd
+- name: set elasticsearch systemd
+  lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^#?DefaultLimitNOFILE='
+    line: 'DefaultLimitNOFILE=65535'
+  become: true
+  notify: 
+    - reload systemd
+    - restart elasticsearch
+
+- name: set elasticsearch systemd
+  lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^#?DefaultLimitNPROC='
+    line: 'DefaultLimitNPROC=32000'
+  become: true
+  notify:
+    - reload systemd
+    - restart elasticsearch
+
+- name: set elasticsearch systemd
+  lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^#?DefaultLimitMEMLOCK=infinity'
+    line: 'DefaultLimitMEMLOCK=infinity'
+  become: true
+  notify:
+    - reload systemd
+    - restart elasticsearch
+# end systemd
+
+- name: install elasticsearch
+  package:
+    pkg: elasticsearch
+    state: latest
+  become: true
+
+- name: enable service elasticsearch
+  systemd:
+    name: elasticsearch
+    state: started
+    enabled: yes
+  become: true
+
+- name: set jvm
+  lineinfile:
+    path: /etc/elasticsearch/jvm.options
+    regexp: '^-Xms\d+g'
+    line: '-Xms{{ jvm_memory_minmax }}g'
+  become: true
+  notify: restart elasticsearch
+
+- name: set jvm
+  lineinfile:
+    path: /etc/elasticsearch/jvm.options
+    regexp: '^-Xmx\d+g'
+    line: '-Xmx{{ jvm_memory_minmax }}g'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?cluster.name: '
+    line: 'cluster.name: moodle-elasticsearch'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?node.name: '
+    line: 'node.name: moodle-es-1'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?network.host: '
+    line: 'network.host: 0.0.0.0'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?cluster.initial_master_nodes: '
+    line: 'cluster.initial_master_nodes: ["moodle-es-1"]'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?bootstrap.memory_lock: '
+    line: 'bootstrap.memory_lock: true'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/default/elasticsearch
+    regexp: '^#?MAX_OPEN_FILES='
+    line: 'MAX_OPEN_FILES=65535'
+  become: true
+  notify: restart elasticsearch
+
+- name: set elasticsearch
+  lineinfile:
+    path: /etc/default/elasticsearch
+    regexp: '^#?MAX_LOCKED_MEMORY=unlimited'
+    line: 'MAX_LOCKED_MEMORY=unlimited'
+  become: true
+  notify: restart elasticsearch

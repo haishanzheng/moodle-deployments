@@ -1,0 +1,49 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- import_tasks: mysql.yml
+
+- name: stat mysql config enabled
+  stat: path=/etc/filebeat/modules.d/mysql.yml.disabled
+  become: true
+  register: mysql_config_stat
+
+- name: enable mysql config
+  command: mv /etc/filebeat/modules.d/mysql.yml.disabled /etc/filebeat/modules.d/mysql.yml
+  when: mysql_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+- name: stat mysql config enabled
+  stat: path=/etc/metricbeat/modules.d/mysql.yml.disabled
+  become: true
+  register: mysql_config_stat
+
+- name: enable mysql config
+  command: mv /etc/metricbeat/modules.d/mysql.yml.disabled /etc/metricbeat/modules.d/mysql.yml
+  when: mysql_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat
+
+- name: set mysql config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/mysql.yml
+    regexp: '^  hosts: \["'
+    line: '  hosts: ["moodle:{{ MYSQL_PASSWORD }}@tcp(127.0.0.1:3306)/"]'
+  become: true
+  notify: restart metricbeat

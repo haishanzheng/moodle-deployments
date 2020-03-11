@@ -1,0 +1,28 @@
+---
+
+- name: install sshpass
+  hosts: web_server_master
+  tasks:
+    - name: install sshpass
+      package:
+        pkg: sshpass
+        state: latest
+      become: true
+
+- name: sync web
+  hosts: web_server_slave
+  tasks:
+    - name: rsync web folder
+      synchronize:
+        # Without a slash on the source directory means copy both the source directory, and the contents (recursively if specified) to the destination directory while adding a trailing slash means only copy the contents of the source directory, recursively if specified, to the destination. 
+        src: /var/www/moodle
+        dest: /var/www/
+        mode: push
+        delete: yes
+        archive: yes
+        rsync_timeout: 10
+      delegate_to: "{{groups['web_server_master'][0]}}"
+      register: rsyncresult
+    - name: output rsyncresult
+      debug: 
+        var: rsyncresult.stdout_lines

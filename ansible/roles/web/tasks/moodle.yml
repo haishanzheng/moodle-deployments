@@ -1,0 +1,104 @@
+- name: install aspell
+  package:
+    pkg: aspell
+    state: latest
+  become: true
+
+- name: install ghostscript
+  package:
+    pkg: ghostscript
+    state: latest
+  become: true
+
+- name: install unoconv
+  package:
+    pkg: unoconv
+    state: latest
+  become: true
+
+- name: install nfs-common
+  package:
+    pkg: nfs-common
+    state: latest
+  become: true
+
+- name: ensure moodlelocalcache path
+  file: 
+    path: '{{ item }}'
+    state: directory
+    mode: '0777'
+  with_items:
+    - /var/www/moodlelocalcache
+  become: true
+
+- name: ensure moodledata path for mount
+  file: 
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - /var/www/moodledata
+  become: true
+
+- name: Mount interal nfs
+  mount:
+    path: /var/www/moodledata
+    src: "{{groups['nfs_server'][0]}}:/srv/moodle/moodledata"
+    fstype: nfs
+    opts: rw,noatime,sync,rsize=8192,wsize=8192,tcp,timeo=14
+    state: mounted
+  when: not USE_EXTERNAL_NFS
+  become: true
+
+- name: Mount external nfs
+  mount:
+    path: /var/www/moodledata
+    src: "{{ EXTERNAL_NFS_IP }}:/ifs/moodle/"
+    fstype: nfs
+    opts: rw,noatime,sync,rsize=8192,wsize=8192,tcp,timeo=14
+    state: mounted
+  when: USE_EXTERNAL_NFS
+  become: true
+
+- name: Ensure cron
+  cron:
+    name: "moodlecron"
+    cron_file: "moodlecron"
+    user: root
+    minute: "*"
+    job: "/usr/bin/php /var/www/moodle/admin/cli/cron.php >/dev/null"
+  become: true
+
+# moodle download
+- name: Check if Moodle downloaded
+  stat:
+    path: "/var/www/moodle/version.php"
+  register: moodle_downloaded
+
+- name: Check if Moodle installed
+  stat:
+    path: "/var/www/moodle/config.php"
+  register: moodle_installed
+
+- name: Unarchive a file that needs to be downloaded
+  unarchive:
+    src: '{{ MOODLE_DOWNLOAD_LINK }}'
+    dest: /var/www/
+    remote_src: yes
+  when:
+    - not moodle_downloaded.stat.exists
+  become: true
+
+- name: copy config.php
+  template: 
+    src: config.php.j2
+    dest: /var/www/moodle/config.php
+  become: true
+
+# TODO
+- name: ensure path permision
+  file:
+    path: /var/www/moodle
+    state: directory
+    mode: '0555'
+    recurse: yes
+  become: true

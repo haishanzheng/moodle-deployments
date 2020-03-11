@@ -1,0 +1,20 @@
+- name: Add elasticsearch apt-key
+  apt_key:
+    data: "{{ lookup('file', '{{ playbook_dir }}/roles/common/files/GPG-KEY-elasticsearch') }}"
+    state: present
+  become: true
+
+- name: add elasticsearch repo
+  apt_repository:
+    repo: deb {{ ELASTICSTACK_APT_REPO }} stable main
+    state: present
+    filename: 'elasticsearch7x'
+  register: elasticsearch_repo_changed
+  become: true
+
+- name: Update apt cache after repo changed
+  apt: 
+    update_cache: yes
+  when: elasticsearch_repo_changed.changed
+  become: true
+

@@ -1,0 +1,45 @@
+---
+
+- name: nfs
+  hosts: nfs_server
+  roles:
+    - common
+    - nfs
+
+- name: db
+  hosts: db_server
+  roles:
+    - common
+    - db
+
+- name: muc
+  hosts: muc_server
+  roles:
+    - common
+    - muc
+
+- name: web
+  hosts: web_server
+  roles:
+    - common
+    - web
+
+- name: lb
+  hosts: lb_server
+  roles:
+    - common
+    - lb
+  tags:
+    debug
+
+- name: elasticsearch
+  hosts: elasticsearch_server
+  roles:
+    - common
+    - elasticsearch
+
+- name: kibana
+  hosts: kibana_server
+  roles:
+    - common
+    - kibana

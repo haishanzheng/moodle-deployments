@@ -1,0 +1,48 @@
+- name: install filebeat
+  package:
+    pkg: filebeat
+    state: latest
+  become: true
+
+- name: enable service filebeat
+  systemd:
+    name: filebeat
+    state: started
+    enabled: yes
+  become: true
+
+- name: set filebeat
+  lineinfile:
+    path: /etc/filebeat/filebeat.yml
+    insertafter: "^output.elasticsearch:"
+    firstmatch: yes
+    regexp: '^  hosts: \["'
+    line: "  hosts: [\"{{ groups['elasticsearch_server'][0] }}:9200\"]"
+  become: true
+  notify: restart filebeat
+
+- name: set filebeat kibana
+  lineinfile:
+    path: /etc/filebeat/filebeat.yml
+    insertafter: "^setup.kibana:"
+    firstmatch: yes
+    regexp: '^  #?host: "'
+    line: "  host: \"{{ groups['kibana_server'][0] }}:5601\""
+  become: true
+  notify: restart filebeat
+
+- name: stat system config enabled
+  stat: path=/etc/filebeat/modules.d/system.yml.disabled
+  become: true
+  register: system_config_stat
+
+- name: enable system config
+  command: mv /etc/filebeat/modules.d/system.yml.disabled /etc/filebeat/modules.d/system.yml
+  when: system_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+# - name: setup
+#   command: /usr/bin/filebeat setup
+#   become: true
+#   when: nginx_config_stat.stat.exists or system_config_stat.stat.exists

@@ -1,0 +1,10 @@
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: true
+
+- name: restart elasticsearch
+  service:
+    name: elasticsearch
+    state: restarted
+  become: true

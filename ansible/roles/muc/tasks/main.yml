@@ -1,0 +1,137 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: install redis
+  package:
+    pkg: redis
+    state: latest
+  become: true
+
+- name: redis bind public
+  lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^bind '
+    line: 'bind 0.0.0.0 ::1'
+  become: true
+  notify: restart redis-server
+
+- name: redis warning fix
+  copy: 
+    src: 50-redis-tuning.conf
+    dest: /etc/sysctl.d//50-redis-tuning.conf
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+
+- name: install sysfsutils
+  package:
+    pkg: sysfsutils
+    state: latest
+  become: true
+
+- name: redis warning fix
+  copy: 
+    src: redis-tuning-sysfs.conf
+    dest: /etc/sysfs.d/redis-tuning-sysfs.conf
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+
+- name: redis save to disk 3600s, 60m
+  blockinfile:
+    path: /etc/redis/redis.conf
+    block: |
+         save ""
+         save 3600 1
+  become: true
+  notify: restart redis-server
+
+- name: start redis service
+  service:
+    name: redis
+    state: started
+    enabled: yes
+  become: true
+
+- name: stat redis config enabled
+  stat: path=/etc/filebeat/modules.d/redis.yml.disabled
+  become: true
+  register: redis_config_stat
+
+- name: enable redis config
+  command: mv /etc/filebeat/modules.d/redis.yml.disabled /etc/filebeat/modules.d/redis.yml
+  when: redis_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+- name: stat redis config enabled
+  stat: path=/etc/metricbeat/modules.d/redis.yml.disabled
+  become: true
+  register: redis_config_stat
+
+- name: enable redis config
+  command: mv /etc/metricbeat/modules.d/redis.yml.disabled /etc/metricbeat/modules.d/redis.yml
+  when: redis_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat
+
+- name: set redis config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/redis.yml
+    regexp: '^  #?metricsets:'
+    line: '  metricsets:'
+  become: true
+  notify: restart metricbeat
+
+- name: set redis config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/redis.yml
+    regexp: '^  #?  - info'
+    line: '    - info'
+  become: true
+  notify: restart metricbeat
+
+- name: set redis config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/redis.yml
+    regexp: '^  #?  - keyspace'
+    line: '    - keyspace'
+  become: true
+  notify: restart metricbeat
+
+- name: set redis config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/redis.yml
+    insertafter: "- keyspace"
+    firstmatch: yes
+    regexp: '^    - key$'
+    line: "    - key"
+  become: true
+  notify: restart metricbeat
+
+- name: set redis config
+  blockinfile:
+    path: /etc/metricbeat/modules.d/redis.yml
+    insertafter: "period"
+    block: |2
+        key.patterns:
+          - pattern: '*'
+  become: true
+  notify: restart metricbeat

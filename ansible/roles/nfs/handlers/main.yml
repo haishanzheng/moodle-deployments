@@ -1,0 +1,7 @@
+- name: restart nfs-kernel-server
+  service: name=nfs-kernel-server state=restarted
+  become: true
+
+- name: reload nfs-kernel-server
+  service: name=nfs-kernel-server state=reloaded
+  become: true

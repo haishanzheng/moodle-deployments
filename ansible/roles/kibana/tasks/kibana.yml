@@ -1,0 +1,66 @@
+- name: install kibana
+  package:
+    pkg: kibana
+    state: latest
+  become: true
+
+- name: enable service kibana
+  systemd:
+    name: kibana
+    state: started
+    enabled: yes
+  become: true
+
+- name: set kibana
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: '^#?server.host: '
+    line: 'server.host: 0.0.0.0'
+  become: true
+  notify: restart kibana
+
+- name: set kibana elasticsearch server
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: '^#?elasticsearch.hosts: '
+    line: "elasticsearch.hosts: [\"http://{{ groups['elasticsearch_server'][0] }}:9200\"]"
+  become: true
+  notify: restart kibana
+
+- name: ensure log path
+  file:
+    path: /var/log/kibana
+    state: directory
+    owner: kibana
+    group: kibana
+    mode: '2750'
+  become: true
+
+- name: set kibana
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: '^#?#logging.dest: '
+    line: 'logging.dest: /var/log/kibana/kibana.log'
+  become: true
+  notify: restart kibana
+
+- name: set log rotate
+  blockinfile:
+    path: /etc/kibana/kibana.yml
+    insertafter: "logging.dest:"
+    block: |
+            logging.rotate:
+              enabled: true
+              everyBytes: 10485760
+              keepFiles: 10
+  become: true
+  notify: restart kibana
+
+# Web GUI translate
+# - name: set kibana
+#   lineinfile:
+#     path: /etc/kibana/kibana.yml
+#     regexp: '^#?i18n.locale: '
+#     line: 'i18n.locale: "zh-CN"'
+#   become: true
+#   notify: restart kibana

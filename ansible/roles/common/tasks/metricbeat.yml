@@ -1,0 +1,48 @@
+- name: install metricbeat
+  package:
+    pkg: metricbeat
+    state: latest
+  become: true
+
+- name: enable service metricbeat
+  systemd:
+    name: metricbeat
+    state: started
+    enabled: yes
+  become: true
+
+- name: set metricbeat
+  lineinfile:
+    path: /etc/metricbeat/metricbeat.yml
+    insertafter: "^output.elasticsearch:"
+    firstmatch: yes
+    regexp: '^  hosts: \["'
+    line: "  hosts: [\"{{ groups['elasticsearch_server'][0] }}:9200\"]"
+  become: true
+  notify: restart metricbeat
+
+- name: set metricbeat kibana
+  lineinfile:
+    path: /etc/metricbeat/metricbeat.yml
+    insertafter: "^setup.kibana:"
+    firstmatch: yes
+    regexp: '^  #?host: "'
+    line: "  host: \"{{ groups['kibana_server'][0] }}:5601\""
+  become: true
+  notify: restart metricbeat
+
+- name: stat system config enabled
+  stat: path=/etc/metricbeat/modules.d/system.yml.disabled
+  become: true
+  register: system_config_stat
+
+- name: enable system config
+  command: mv /etc/metricbeat/modules.d/system.yml.disabled /etc/metricbeat/modules.d/system.yml
+  when: system_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat
+
+# - name: setup
+#   command: /usr/bin/metricbeat setup
+#   become: true
+#   when: nginx_config_stat.stat.exists or system_config_stat.stat.exists

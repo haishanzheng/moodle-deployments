@@ -1,0 +1,65 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- import_tasks: nginx.yml
+
+- name: stat nginx config enabled
+  stat: path=/etc/filebeat/modules.d/nginx.yml.disabled
+  become: true
+  register: nginx_config_stat
+
+- name: enable nginx config
+  command: mv /etc/filebeat/modules.d/nginx.yml.disabled /etc/filebeat/modules.d/nginx.yml
+  when: nginx_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+- name: stat nginx config enabled
+  stat: path=/etc/metricbeat/modules.d/nginx.yml.disabled
+  become: true
+  register: nginx_config_stat
+
+- name: enable nginx config
+  command: mv /etc/metricbeat/modules.d/nginx.yml.disabled /etc/metricbeat/modules.d/nginx.yml
+  when: nginx_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat
+
+- name: set nginx config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/nginx.yml
+    regexp: '^  #?metricsets:'
+    line: '  metricsets:'
+  become: true
+  notify: restart metricbeat
+
+- name: set nginx config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/nginx.yml
+    regexp: '^  #?  - stubstatus'
+    line: '    - stubstatus'
+  become: true
+  notify: restart metricbeat
+
+- name: set nginx config
+  lineinfile:
+    path: /etc/metricbeat/modules.d/nginx.yml
+    regexp: '^  hosts: \["http://127.0.0.1'
+    line: '  hosts: ["http://127.0.0.1:8080"]'
+  become: true
+  notify: restart metricbeat

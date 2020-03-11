@@ -1,0 +1,3 @@
+{% for host in groups['web_server'] %}
+/srv/moodle/moodledata    {{host}}/32(rw,sync,no_subtree_check)
+{% endfor %}

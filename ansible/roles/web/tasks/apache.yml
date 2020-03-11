@@ -1,0 +1,362 @@
+- name: install apache2
+  package:
+    pkg: apache2
+    state: latest
+  become: true
+
+- name: install php
+  package:
+    pkg: php
+    state: latest
+  become: true
+
+- name: install php-fpm
+  package:
+    pkg: php-fpm
+    state: latest
+  become: true
+
+- name: install php module
+  package:
+    pkg: '{{ item }}'
+    state: latest
+  with_items:
+    - php-mysql
+    - php-xml
+    - php-gd
+    - php-curl
+    - php-zip
+    - php-intl
+    - php-mbstring
+    - php-xmlrpc
+    - php-soap
+    - php-redis
+    - php-ldap
+  become: true
+
+- name: document root
+  lineinfile:
+    path: /etc/apache2/sites-available/000-default.conf
+    regexp: '^[\s\t]*DocumentRoot '
+    line: '        DocumentRoot /var/www/moodle'
+  become: true
+  notify: reload apache2
+
+- name: disable javascript alias
+  file: 
+    path: /etc/apache2/conf-enabled/javascript-common.conf 
+    state: absent
+  become: true
+  notify: reload apache2
+
+- name: harden, token
+  lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '^ServerTokens'
+    line: 'ServerTokens Prod'
+  become: true
+  notify: reload apache2
+
+- name: harden, signature
+  lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '^ServerSignature'
+    line: 'ServerSignature Off'
+  become: true
+  notify: reload apache2
+
+- name: enable apache2 module
+  apache2_module:
+    state: present
+    name: "{{ item }}"
+  become: true
+  with_items:
+    - headers
+  notify: reload apache2
+
+- name: harden, frame
+  lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '#?Header set X-Frame-Options: "sameorigin"'
+    line: 'Header set X-Frame-Options: "sameorigin"'
+  become: true
+  notify: reload apache2
+
+- name: disable module
+  apache2_module:
+    state: absent
+    name: "{{ item }}"
+    force: true
+  become: true
+  with_items:
+    - autoindex
+    - ssl
+    - php7.2
+  notify: reload apache2
+
+- name: disable module
+  apache2_module:
+    state: absent
+    name: "{{ item }}"
+    force: true
+  become: true
+  with_items:
+    - mpm_prefork
+  notify: reload apache2
+
+- name: enable apache2 module
+  apache2_module:
+    state: present
+    name: "{{ item }}"
+  become: true
+  with_items:
+    - mpm_event
+  notify: reload apache2
+
+- name: enable apache2 module
+  apache2_module:
+    state: present
+    name: "{{ item }}"
+  become: true
+  with_items:
+    - proxy_fcgi
+    - setenvif
+  notify: reload apache2
+
+- name: enable fpm config
+  file: 
+    src: /etc/apache2/conf-available/php7.2-fpm.conf 
+    path: /etc/apache2/conf-enabled/php7.2-fpm.conf 
+    state: link
+  become: true
+  notify: reload apache2
+
+# may cause performance issue when use with NFS?
+# - name: harden php
+#   lineinfile:
+#     path: /etc/php/7.2/fpm/php.ini
+#     regexp: '^;?open_basedir ='
+#     line: 'open_basedir = /var/www/moodle/:/var/www/moodledata/:/var/www/moodlelocalcache/:/var/lib/php/sessions'
+#   become: true
+#   notify: reload php7-fpm
+
+- name: harden php
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: '^;?open_basedir ='
+    line: ';open_basedir ='
+  become: true
+  notify: reload php7-fpm
+
+- name: remove cgi-bin
+  file: 
+    path: /etc/apache2/conf-enabled/serve-cgi-bin.conf 
+    state: absent
+  become: true
+  notify: reload apache2
+
+# https://medium.com/@sbuckpesch/apache2-and-php-fpm-performance-optimization-step-by-step-guide-1bfecf161534
+- name: increase works
+  lineinfile:
+    path: /etc/apache2/mods-enabled/mpm_event.conf
+    regexp: 'MaxRequestWorkers'
+    line: '        MaxRequestWorkers 2000'
+  become: true
+  notify: reload apache2
+
+- name: increase works
+  lineinfile:
+    path: /etc/apache2/mods-enabled/mpm_event.conf
+    regexp: 'MaxConnectionsPerChild'
+    line: '        MaxConnectionsPerChild 1000'
+  become: true
+  notify: reload apache2
+
+# default did not contain
+- name: increase works
+  lineinfile:
+    path: /etc/apache2/mods-enabled/mpm_event.conf
+    regexp: 'ServerLimit'
+    line: '        ServerLimit 2000'
+    insertbefore: '</IfModule>'
+  become: true
+  notify: reload apache2
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: 'pm.max_children = '
+    line: 'pm.max_children = 256'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: 'pm.start_servers = '
+    line: 'pm.start_servers = 20'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: 'pm.min_spare_servers = '
+    line: 'pm.min_spare_servers = 10'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: 'pm.max_spare_servers = '
+    line: 'pm.max_spare_servers = 20'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: 'pm.max_children = '
+    line: 'pm.max_children = 256'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/pool.d/www.conf
+    regexp: ';?pm.max_requests = '
+    line: 'pm.max_requests = 2000'
+  become: true
+  notify: reload php7-fpm
+
+# upload limit
+
+- name: enable apache upload limit
+  copy: 
+    src: upload-limit.conf 
+    dest: /etc/apache2/conf-available/upload-limit.conf
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+
+- name: enable apache upload limit
+  file: 
+    src: /etc/apache2/conf-available/upload-limit.conf 
+    path: /etc/apache2/conf-enabled/upload-limit.conf 
+    state: link
+  become: true
+  notify: reload apache2
+
+## php-fpm
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: 'post_max_size = '
+    line: 'post_max_size = 2048M'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: 'upload_max_filesize = '
+    line: 'upload_max_filesize = 2048M'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: 'max_execution_time = '
+    line: 'max_execution_time = 500'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: 'max_input_time = '
+    line: 'max_input_time = 500'
+  become: true
+  notify: reload php7-fpm
+
+- name: increase php-fpm
+  lineinfile:
+    path: /etc/php/7.2/fpm/php.ini
+    regexp: 'memory_limit = '
+    line: 'memory_limit = 1280M'
+  become: true
+  notify: reload php7-fpm
+
+# upload limit end
+
+- name: donot log server-status
+  lineinfile:
+    path: /etc/apache2/sites-available/000-default.conf
+    regexp: '[\s\t]*SetEnvIf Request_URI '
+    line: '        SetEnvIf Request_URI "^/server-status$" dontlog'
+    insertbefore: '^[\s\t]*ErrorLog'
+  become: true
+  notify: reload apache2
+
+- name: donot log server-status
+  lineinfile:
+    path: /etc/apache2/sites-available/000-default.conf
+    regexp: '[\s\t]*CustomLog \$\{APACHE_LOG_DIR\}/access\.log combined'
+    line: '        CustomLog ${APACHE_LOG_DIR}/access.log combined env=!dontlog'
+    insertbefore: '^[\s\t]*ErrorLog'
+  become: true
+  notify: reload apache2
+
+# remote ip
+- name: enable apache2 module
+  apache2_module:
+    state: present
+    name: "{{ item }}"
+  become: true
+  with_items:
+    - remoteip
+  notify: reload apache2
+
+- name: enable apache remoteip
+  template: 
+    src: lb_nginx_ip.conf.j2 
+    dest: /etc/apache2/conf-available/lb_nginx_ip.conf
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+
+- name: enable apache remoteip
+  file: 
+    src: /etc/apache2/conf-available/lb_nginx_ip.conf 
+    path: /etc/apache2/conf-enabled/lb_nginx_ip.conf 
+    state: link
+  become: true
+  notify: reload apache2
+
+- name: log realip
+  lineinfile:
+    path: /etc/apache2/apache2.conf
+    regexp: '^LogFormat "(.*)%h %l %u(.*) combined$'
+    line: 'LogFormat "\1%a %l %u\2 combined'
+    backrefs: yes
+  become: true
+  notify: reload apache2
+
+- name: start php7.2-fpm service
+  service:
+    name: php7.2-fpm
+    state: started
+    enabled: yes
+  become: true
+
+- name: start apache2 service
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+  become: true
+

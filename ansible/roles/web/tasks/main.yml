@@ -1,0 +1,67 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: ensure path permision
+  file:
+    path: /var/www/moodle
+    state: directory
+    mode: '0555'
+  become: true
+
+- import_tasks: apache.yml
+
+- import_tasks: moodle.yml
+
+- name: Ensure a locale exists
+  locale_gen:
+    name: zh_CN.UTF-8
+    state: present
+  become: true
+
+- name: stat apache config enabled
+  stat: path=/etc/filebeat/modules.d/apache.yml.disabled
+  become: true
+  register: apache_config_stat
+
+- name: enable apache config
+  command: mv /etc/filebeat/modules.d/apache.yml.disabled /etc/filebeat/modules.d/apache.yml
+  when: apache_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+- name: stat apache config enabled
+  stat: path=/etc/metricbeat/modules.d/apache.yml.disabled
+  become: true
+  register: apache_config_stat
+
+- name: enable apache config
+  command: mv /etc/metricbeat/modules.d/apache.yml.disabled /etc/metricbeat/modules.d/apache.yml
+  when: apache_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat
+
+- name: stat php_fpm config enabled
+  stat: path=/etc/metricbeat/modules.d/php_fpm.yml.disabled
+  become: true
+  register: php_fpm_config_stat
+
+- name: enable php_fpm config
+  command: mv /etc/metricbeat/modules.d/php_fpm.yml.disabled /etc/metricbeat/modules.d/php_fpm.yml
+  when: php_fpm_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat

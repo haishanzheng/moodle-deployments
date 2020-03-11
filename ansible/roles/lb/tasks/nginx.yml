@@ -1,0 +1,73 @@
+- name: install nginx
+  package:
+    pkg: nginx
+    state: latest
+  become: true
+
+- name: harden nginx
+  copy: 
+    src: harden.conf 
+    dest: /etc/nginx/conf.d/harden.conf 
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+  notify: reload nginx
+
+- name: set log 180d
+  lineinfile:
+    path: /etc/logrotate.d/nginx
+    regexp: '^[\s\t]*rotate '
+    line: '        rotate 180'
+  become: true
+
+- name: remove default
+  file: 
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: reload nginx
+
+- name: copy stub_status
+  copy: 
+    src: nginx_stub_status.conf
+    dest: /etc/nginx/sites-available/nginx_stub_status.conf
+    owner: root 
+    group: root
+  become: true
+  notify: reload nginx
+
+- name: enable stub_status
+  file: 
+    src: /etc/nginx/sites-available/nginx_stub_status.conf
+    path: /etc/nginx/sites-enabled/nginx_stub_status.conf
+    state: link
+  become: true
+  notify: reload nginx
+
+- name: copy cdn real_ip
+  template: 
+    src: learning-cdn_real_ip.conf.j2
+    dest: /etc/nginx/sites-available/learning-cdn_real_ip.conf
+    owner: root 
+    group: root
+  become: true
+  notify: reload nginx
+
+- name: copy web
+  template: 
+    src: learning.j2
+    dest: /etc/nginx/sites-available/learning
+    owner: root 
+    group: root
+  become: true
+  notify: reload nginx
+
+- name: enable web
+  file: 
+    src: /etc/nginx/sites-available/learning
+    path: /etc/nginx/sites-enabled/learning
+    state: link
+  become: true
+  notify: reload nginx
+

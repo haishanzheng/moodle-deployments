@@ -1,0 +1,103 @@
+- name: install mysql-server
+  package:
+    pkg: mysql-server
+    state: latest
+  become: true
+
+- name: set LimitNOFILE
+  lineinfile:
+    path: /lib/systemd/system/mysql.service
+    regexp: 'LimitNOFILE='
+    line: 'LimitNOFILE=6000'
+  become: true
+  notify:
+    - reload systemd
+    - restart mysql
+
+- name: mysql bind public
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: 'bind-address\s*='
+    line: 'bind-address            = 0.0.0.0'
+  become: true
+  notify: restart mysql
+
+- name: mysql server id
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '#?server-id\s*='
+    line: 'server-id              = {{ SERVER_ID }}'
+  become: true
+  notify: restart mysql
+
+- name: mysql log bin
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '#?log_bin'
+    line: 'log_bin                        = /var/log/mysql/mysql-bin.log'
+  become: true
+  notify: restart mysql
+
+- name: mysql max conn
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '#?max_connections\s*='
+    line: 'max_connections        = 1000'
+  become: true
+  notify: restart mysql
+
+- name: mysqld.tuning.cnf
+  copy: 
+    src: mysqld.tuning.cnf
+    dest: /etc/mysql/mysql.conf.d/mysqld.tuning.cnf
+    owner: root 
+    group: root 
+    mode: "a+r"
+  become: true
+  notify: restart mysql
+
+- name: start mysql service
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  become: true
+
+# mysql module need begin
+- name: install python3-pip
+  package:
+    pkg: python3-pip
+    state: latest
+  become: true
+
+- name: install ConfigParser, pip
+  pip:
+    name: ConfigParser
+    state: latest
+  become: true
+
+- name: install PyMySQL, pip
+  pip:
+    name: PyMySQL
+    state: latest
+  become: true
+# mysql module need begin
+
+- name: new moodle db
+  mysql_db:
+    name: moodle
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  become: true
+
+- name: add mysql user moodle
+  mysql_user:
+    name: moodle
+    host: '%'
+    password: "{{ MYSQL_PASSWORD }}"
+    priv: 'moodle.*:ALL,GRANT'
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  become: true

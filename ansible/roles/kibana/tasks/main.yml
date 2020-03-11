@@ -1,0 +1,30 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- import_tasks: kibana.yml
+
+- name: stat kibana config enabled
+  stat: path=/etc/metricbeat/modules.d/kibana.yml.disabled
+  become: true
+  register: kibana_config_stat
+
+- name: enable kibana config
+  command: mv /etc/metricbeat/modules.d/kibana.yml.disabled /etc/metricbeat/modules.d/kibana.yml
+  when: kibana_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat

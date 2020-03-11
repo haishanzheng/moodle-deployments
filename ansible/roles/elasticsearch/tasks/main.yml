@@ -1,0 +1,41 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- import_tasks: elasticsearch.yml
+
+- name: stat elasticsearch config enabled
+  stat: path=/etc/filebeat/modules.d/elasticsearch.yml.disabled
+  become: true
+  register: elasticsearch_config_stat
+
+- name: enable elasticsearch config
+  command: mv /etc/filebeat/modules.d/elasticsearch.yml.disabled /etc/filebeat/modules.d/elasticsearch.yml
+  when: elasticsearch_config_stat.stat.exists
+  become: true
+  notify: restart filebeat
+
+- name: stat elasticsearch config enabled
+  stat: path=/etc/metricbeat/modules.d/elasticsearch.yml.disabled
+  become: true
+  register: elasticsearch_config_stat
+
+- name: enable elasticsearch config
+  command: mv /etc/metricbeat/modules.d/elasticsearch.yml.disabled /etc/metricbeat/modules.d/elasticsearch.yml
+  when: elasticsearch_config_stat.stat.exists
+  become: true
+  notify: restart metricbeat

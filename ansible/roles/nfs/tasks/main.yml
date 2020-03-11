@@ -1,0 +1,64 @@
+- name: copy user.rules
+  template: 
+    src: user.rules.j2 
+    dest: /etc/ufw/user.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: copy user6.rules
+  template: 
+    src: user6.rules.j2 
+    dest: /etc/ufw/user6.rules 
+    owner: root 
+    group: root
+  become: true
+  notify: restart ufw
+
+- name: install nfs-kernel-server
+  package:
+    pkg: nfs-kernel-server
+    state: latest
+  become: true
+
+- name: install nfs-common
+  package:
+    pkg: nfs-common
+    state: latest
+  become: true
+
+- name: nfs firewall
+  lineinfile:
+    path: /etc/default/nfs-kernel-server
+    regexp: '^RPCMOUNTDOPTS='
+    line: 'RPCMOUNTDOPTS="--manage-gids --port {{ RPCMOUNTDOPTS_PORT }}"'
+  become: true
+  notify: reload nfs-kernel-server
+
+- name: start nfs-kernel-server service
+  service:
+    name: nfs-kernel-server
+    state: started
+    enabled: yes
+  become: true
+
+# TODO，security?
+- name: ensure moodledata dir
+  file: 
+    path: '{{ item }}'
+    state: directory 
+    # owner: nobody 
+    # group: nogroup
+  with_items:
+    - /srv/moodle/moodledata
+  become: true
+
+- name: copy exports
+  template: 
+    src: exports.j2 
+    dest: /etc/exports 
+    owner: root 
+    group: root
+  notify: reload nfs-kernel-server
+  become: true

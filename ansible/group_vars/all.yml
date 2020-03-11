@@ -1,0 +1,25 @@
+ADMIN_IPS: 
+  - 127.0.0.1
+
+KIBANA_VIEWER_IP:
+  - 127.0.0.1
+
+ZABBIX_RND_PROXY_IP: 127.0.0.1
+
+MYSQL_PASSWORD: MUSTCHANGE
+MOODLE_UPGRADE_KEY: MUSTCHANGE
+
+RPCMOUNTDOPTS_PORT: 32767
+
+MOODLE_DOWNLOAD_LINK: https://download.moodle.org/download.php/direct/stable37/moodle-latest-37.tgz
+
+ELASTICSTACK_APT_REPO: https://mirrors.tuna.tsinghua.edu.cn/elasticstack/7.x/apt
+
+MOODLE_WWWROOT: https://moodleURL
+NGINX_SERVER_NAME: moodleURL
+
+MOODLE_SESSION_SERVER_IP : 127.0.0.1
+HAS_SSL_CERTIFICATE: True
+NON_SSL_HAS_REVERSEPROXY: True
+USE_EXTERNAL_NFS: False
+HAS_CDN: False

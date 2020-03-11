@@ -1,0 +1,40 @@
+- name: include overwrite vars
+  include_vars: all.overwrite.yml
+
+# set ufw default DEFAULT_INPUT_POLICY="DROP"
+- name: make sure ufw default DEFAULT_INPUT_POLICY DROP
+  lineinfile:
+    path: /etc/default/ufw
+    regexp: '^DEFAULT_INPUT_POLICY=(.*)$'
+    line: 'DEFAULT_INPUT_POLICY="DROP"'
+  become: true
+  notify: restart ufw
+
+- name: enable and start ufw
+  systemd:
+    name: ufw
+    state: started
+    enabled: yes
+
+- name: Update all packages to the latest version
+  apt:
+    update_cache: yes
+    cache_valid_time: 864000  # 86400 1 day
+    upgrade: dist
+    autoclean: yes
+    autoremove: yes
+    purge: yes
+  become: true
+
+- name: Reboot system if required
+  command: shutdown -r now 'Rebooting to complete system upgrade'
+  args:
+    removes: /var/run/reboot-required
+  become: true
+
+- import_tasks: zabbixagent.yml
+
+- import_tasks: elasticstack.yml
+- import_tasks: filebeat.yml
+- import_tasks: metricbeat.yml
+
